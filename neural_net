@@ -1,0 +1,30 @@
+import torch
+from torch import nn
+from torchvision import models
+
+
+class Network(nn.Module):
+    def __init__(self,pt_model):
+        super().__init__()           #usar os métodos da nn.Module
+        model_ft=models.resnet18(pretrained=True)  #abrir o modelo pré-treinado
+        layers_list=list(model_ft.children())[:-1] # obter uma list com todas as layers do modelo pré-treinado, exceto a última.
+        model_ft=nn.Sequential(*layers_list)   # novo modelo atualizado sem a última layer
+        last_dim=torch.flatten(model_ft(torch.randn(1,3,224,224))).shape[0] # obter a dimensão da ultima layer, de forma a sabermos que valor usar para a linearização
+        
+        self.model=nn.Sequential(
+            model_ft,
+            nn.Flatten(),                    #reshape input para tensor 1-D
+            nn.Dropout(0.2),                 #"zerar" de forma aleatória alguns elementos do tensor, com probabilidade ainda por ser definida (testar)
+            nn.Linear(last_dim,512),
+            nn.ReLU(),
+            nn.Linear(512,256),
+            nn.ReLU(),
+            nn.Linear(256,1)
+            )
+    def forward(self,x):
+        return self.model(x)
+    
+    def loss(self,pred,gtruth):
+        return nn.CrossEntropyLoss(pred,gtruth)
+
+    
