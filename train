@@ -13,7 +13,7 @@ parser=argparse.ArgumentParser()
 
 parser.add_argument('model',choices=['mobilenet_v3_large','vgg16','resnext50_32x4d','resnet18'])
 parser.add_argument('fold',type=int,choices=range(5))
-parser.add_argument('--epochs',type=int,default=100)
+parser.add_argument('--epochs',type=int,default=10)
 parser.add_argument('--batchsize',type=int,default=32)
 parser.add_argument('--lr',type=float,default=1e-4)
 
@@ -32,11 +32,11 @@ trainloader,testloader=DataLoader(trainset,args.batchsize,shuffle=True,num_worke
 def train(trainloader,path,validloader=None,epochs=args.epochs):
     tr_acc=[]
     tr_bal_acc=[]
-    tr_f1=[]
+    #tr_f1=[]
     tr_loss=[]
     tval_acc=[]
     tval_bal_acc=[]
-    tval_f1=[]
+    #tval_f1=[]
     tval_loss=[]
     for epoch in range(epochs):
         
@@ -60,7 +60,7 @@ def train(trainloader,path,validloader=None,epochs=args.epochs):
             c_pred=model.pred(outputs)[1]
             
             avg_acc+=metrics.accuracy_score(labels.cpu(),c_pred.cpu())/len(trainloader)
-            avg_loss+=loss/len(trainloader)
+            avg_loss+=loss.cpu()/len(trainloader)
             bal_acc+=metrics.balanced_accuracy_score(labels.cpu(),c_pred.cpu())/len(trainloader)
             #f1_score+=metrics.f1_score(labels.cpu(),c_pred.cpu(),average=None)/len(trainloader)
         stop_t=time()-start_t;
@@ -70,36 +70,46 @@ def train(trainloader,path,validloader=None,epochs=args.epochs):
         tr_acc+=[avg_acc]
         tr_bal_acc+=[bal_acc]
         #tr_f1+=[f1_score]
-        tr_loss+=[avg_loss]
+        tr_loss+=[avg_loss.cpu()]
+        del avg_loss
+        del avg_acc
+        del bal_acc
+        del inputs
+        del labels
         
+        torch.cuda.empty_cache()
+        torch.cuda.reset_peak_memory_stats(device)
         if validloader is not None:
             model.eval()
+            
             val_acc,val_loss,val_bal_acc=test(validloader,True)
             tval_acc+=[val_acc]
             tval_bal_acc+=[val_bal_acc]
             #tval_f1+=[val_f1]
             tval_loss+=[val_loss]
-    np.savez(os.join.path(path,'training.npz'),tr_acc=tr_acc,tr_bal_acc=tr_bal_acc,tr_loss=tr_loss) 
+    np.savez(os.path.join(path,'training.npz'),tr_acc=tr_acc,tr_bal_acc=tr_bal_acc,tr_loss=tr_loss) 
     if validloader is not None:       
-        np.savez(os.join.path(path,'validation.npz'),tval_acc=tval_acc,tval_bal_acc=tval_bal_acc,tval_loss=tval_loss)          
+        np.savez(os.join.path(path,'validation.npz'),tval_acc=tval_acc,tval_bal_acc=tval_bal_acc,tval_loss=tval_loss)
+          
 def test(testloader,val=False):
-   model.eval()
-   avg_acc=0;
-   avg_loss=0;
-   bal_acc=0
-   #f1_score=0;
-   for inputs,labels in trainloader:
-       inputs,labels=inputs.to(device),labels.to(device,torch.int64)
-       outputs=model(inputs)
-       loss=model.loss(outputs,labels)       
-       c_pred=model.pred(outputs)[1]
-       avg_acc+=metrics.accuracy_score(labels.cpu(),c_pred.cpu())/len(testloader)
-       avg_loss+=loss/len(testloader)
-       bal_acc+=metrics.balanced_accuracy_score(labels.cpu(),c_pred.cpu())/len(testloader)
-       #f1_score+=metrics.f1_score(labels.cpu(),c_pred.cpu())/len(testloader)
-   print('TESTING RESULTS:\nACCURACY: %.2f BAL_ACCURACY: %.2f LOSS: %.3f'%(avg_acc,bal_acc,avg_loss))           
-   if val:
-       return avg_acc,avg_loss,bal_acc         
+   with torch.no_grad():
+       model.eval()
+       avg_acc=0;
+       avg_loss=0;
+       bal_acc=0
+       #f1_score=0;
+       for inputs,labels in testloader:
+           inputs,labels=inputs.to(device),labels.to(device,torch.int64)
+           outputs=model(inputs)
+           loss=model.loss(outputs,labels)       
+           c_pred=model.pred(outputs)[1]
+           avg_acc+=metrics.accuracy_score(labels.cpu(),c_pred.cpu())/len(testloader)
+           avg_loss+=loss/len(testloader)
+           bal_acc+=metrics.balanced_accuracy_score(labels.cpu(),c_pred.cpu())/len(testloader)
+           #f1_score+=metrics.f1_score(labels.cpu(),c_pred.cpu())/len(testloader)
+       print('TESTING RESULTS:\nACCURACY: %.2f BAL_ACCURACY: %.2f LOSS: %.3f'%(avg_acc,bal_acc,avg_loss))           
+       if val:
+           return avg_acc,avg_loss,bal_acc         
 
 if __name__ == '__main__':         
     model=Network(args.model)
