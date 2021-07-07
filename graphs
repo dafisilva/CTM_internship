@@ -1,0 +1,43 @@
+import numpy as np
+import matplotlib.pyplot as plt
+
+training=np.load('Results/training.npz')
+validation=np.load('Results/validation.npz')
+
+tr_acc=training['tr_acc']
+tr_bal_acc=training['tr_bal_acc']
+tr_loss=training['tr_loss']
+
+val_acc=validation['tval_acc']
+val_bal_acc=validation['tval_bal_acc']
+val_loss=validation['tval_loss']
+
+epochs=[i+1 for i in range(10)]
+
+plt.figure()
+
+
+plt.plot(epochs,tr_acc,'r',label='training')
+plt.plot(epochs,val_acc,'b',label='validation')
+plt.title('Accuracy vs epochs')
+plt.xlabel('Epochs')
+plt.ylabel('Accuracy')
+plt.legend()
+plt.ylim(0,1)
+plt.figure()
+
+plt.plot(epochs,tr_bal_acc,'r',label='training')
+plt.plot(epochs,val_bal_acc,'b',label='validation')
+plt.title('Balanced Accuracy vs epochs')
+plt.xlabel('Epochs')
+plt.ylabel('Balanced Accuracy')
+plt.legend()
+plt.ylim(0,1)
+
+plt.figure()
+plt.plot(epochs,tr_loss,'r',label='training')
+plt.plot(epochs,val_loss,'b',label='validation')
+plt.title('Loss vs epochs')
+plt.xlabel('Epochs')
+plt.ylabel('Loss')
+plt.legend()
