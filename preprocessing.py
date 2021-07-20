@@ -7,7 +7,7 @@ from PIL import Image
 num_classes=4;
 divs=5;
 
-PATH=r'C:\Users\dafis\Desktop\CTM_SUMMER\Dataset'
+PATH=r'/content/drive/MyDrive/CTM_Dataset/Dataset'
 classes=['Negative for Intraepithelial malignancy','Low squamous intra-epithelial lesion', 'High squamous intra-epithelial lesion',  'Squamous cell carcinoma']
 directories=os.listdir(PATH)
 X=[]
@@ -24,17 +24,18 @@ for folder in directories:
 
 X,Y=np.array(X),np.array(Y)
 
-
-skf=StratifiedKFold(n_splits=divs,shuffle=True);
-
+#without test set:
+skf=StratifiedKFold(n_splits=divs,shuffle=True,random_state=1234)
 data_dict=[{'train':(X[tr],Y[tr]),'test':(X[ts],Y[ts])} for tr,ts in skf.split(X,Y)]
+
+#with test set:
+skf2=StratifiedKFold(n_splits=2,shuffle=True,random_state=1234)
+new_data_dict=[]
+for x in data_dict:
+  tr,tv = skf2.split(x['train'][0],x['train'][1])
+  new_data_dict.append({'train':(x['train'][0][tr[0]],x['train'][1][tr[0]]),'val':(x['train'][0][tv[0]],x['train'][1][tv[0]]),'test':x['test']})
+
 
     
 
-pickle.dump(data_dict,open(r'C:\Users\dafis\Desktop\CTM_SUMMER\Pickle/data.p','wb'))
-
-
-
-
-
-
+pickle.dump(data_dict,open(r'/content/drive/MyDrive/CTM_Dataset/Pickle/data.p','wb'))
